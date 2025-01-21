@@ -24,6 +24,7 @@
 
 
 #include "Timer.h"
+#include "modbus.h"
 
 /* USER CODE END Includes */
 
@@ -44,6 +45,9 @@
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim7;
 
+UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_rx;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -51,20 +55,33 @@ TIM_HandleTypeDef htim7;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_TIM7_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern volatile uint32_t u32TickCounter;
+//extern volatile uint32_t u32TickCounter;
+//
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+//{
+//	u32TickCounter++;
+//}
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+	char rxData[100] = {0};
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	u32TickCounter++;
+  /* Prevent unused argument(s) compilation warning */
+  int tmp = 0;
+  tmp++;
+  /* NOTE: This function should not be modified, when the callback is needed,
+		   the HAL_UART_RxCpltCallback could be implemented in the user file
+   */
 }
-
 /* USER CODE END 0 */
 
 /**
@@ -95,8 +112,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_TIM7_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_UART_Receive_DMA(&huart2, (uint8_t *)rxData, 20);
+
+
 
   HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM7_IRQn);
@@ -116,6 +139,8 @@ int main(void)
 //	  HAL_Delay(1000);
 
 	  TaskControlRedLed();
+	  TaskModbusCommunication();
+	  //TaskUartTransmit();
   }
   /* USER CODE END 3 */
 }
@@ -201,6 +226,55 @@ static void MX_TIM7_Init(void)
   HAL_TIM_Base_Start_IT(&htim7);
 
   /* USER CODE END TIM7_Init 2 */
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
 }
 
