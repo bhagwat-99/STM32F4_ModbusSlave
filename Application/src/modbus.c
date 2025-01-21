@@ -15,6 +15,10 @@ uint8_t MB_RxFrame[MODBUS_MAX_FRAME_LENGTH];
 uint8_t MB_TxFrameLength;
 uint8_t MB_RxFrameLength;
 
+
+MB_RxBuf_t sRxBuf;
+
+
 //TimerMs_t TimerUartTrasmit = 0;
 //void TaskUartTransmit(void){
 //	if((TimerMs_t)(GetTickCounter() - TimerUartTrasmit) < 3000) return;
@@ -70,13 +74,25 @@ void MB_SendMessage(){
 
 TimerMs_t TimerModbusTask = 0;
 void TaskModbusCommunication(void){
-	if((TimerMs_t)(GetTickCounter() - TimerModbusTask) < 10000) return;
+	if((TimerMs_t)(GetTickCounter() - TimerModbusTask) < 10000) return; //Task frequency 50ms
 
+	// data received in circular buffer?
+	while(sRxBuf.BufInIndex != sRxBuf.BufOutIndex){ // There is data to process
+		HAL_UART_Transmit(&huart2, sRxBuf.MB_RxBuf + sRxBuf.BufOutIndex , 1, 10);
+		if(sRxBuf.BufOutIndex >= MAX_BUF_SIZE - 1){
+			sRxBuf.BufOutIndex = 0;
+		}
+		else{
+			sRxBuf.BufOutIndex++;
+		}
 
-	MB_PrepareMessage();
-	MB_SendMessage();
+	}
+//	MB_PrepareMessage();
+//	MB_SendMessage();
 
 	TimerModbusTask = GetTickCounter();
 
 
 }
+
+

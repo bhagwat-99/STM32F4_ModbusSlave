@@ -16,6 +16,14 @@ struct ModbusQuery_t{
 	uint16_t 	Length;
 };
 
+#define MAX_BUF_SIZE	256
+typedef struct {
+	uint8_t MB_RxBuf[MAX_BUF_SIZE]; // circular buffer to store received byte in uart interrupt;
+	uint16_t BufInIndex;
+	uint16_t BufOutIndex;
+
+}MB_RxBuf_t;
+
 void TaskUartTransmit();
 uint16_t CRC16(uint8_t *data, uint8_t length);
 void TaskModbusCommunication();
