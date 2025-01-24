@@ -43,6 +43,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart2;
@@ -56,44 +57,29 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//extern volatile uint32_t u32TickCounter;
-//
-//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-//{
-//	u32TickCounter++;
-//}
 
 
-	char MB_RxBuf[100] = {0}; //
-	uint8_t rxChar;
-
-	extern MB_RxBuf_t sRxBuf;
+extern struct ModbusReceiver_t MB_Receiver;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   /* Prevent unused argument(s) compilation warning */
 
-	// Inter-frame timeout to be implemented
+	MB_ReceiverISR();
 
-	// Is buffer full
-	if(sRxBuf.BufInIndex >= MAX_BUF_SIZE -1){ //
-		sRxBuf.BufInIndex = 0; // Reset the index
-	}
-	else{
-		sRxBuf.BufInIndex++;
-	}
-
-	HAL_UART_Receive_IT(&huart2, &sRxBuf.MB_RxBuf[sRxBuf.BufInIndex], 1);
+	HAL_UART_Receive_IT(&huart2, &MB_Receiver.ReceivedByte, 1);
   /* NOTE: This function should not be modified, when the callback is needed,
 		   the HAL_UART_RxCpltCallback could be implemented in the user file
    */
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -126,29 +112,31 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM7_Init();
   MX_USART2_UART_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_IT(&huart2, &sRxBuf.MB_RxBuf[sRxBuf.BufInIndex], 1); // init the uart interrupt
+  MB_InitReceiver();
+  InitHoldingRegisters();
 
+  HAL_UART_Receive_IT(&huart2, &MB_Receiver.ReceivedByte, 1); // init the uart interrupt
 
 
   HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM7_IRQn);
+  HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  SetHoldingRegister(0, 0);
+
+
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	  HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET);
-//	  HAL_Delay(1000);
-//	  HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_RESET);
-//	  HAL_Delay(1000);
 
 	  TaskControlRedLed();
 	  //TaskModbusCommunication();
@@ -200,6 +188,45 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 83;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 149;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+  //HAL_TIM_Base_Start_IT(&htim6); // start after slave id received;
+
+  /* USER CODE END TIM6_Init 2 */
+
 }
 
 /**

@@ -10,16 +10,24 @@
 
 // function code
 #define FC_RHR	0x03
+#define FC_WSHR	0x06 // write single holding register
 
 // exceptio code
 #define EC_IllegalDataVal 0x03
 
 
-struct ModbusQuery_t{
-	uint8_t 	SlaveID;
-	uint8_t 	FunctionCode;
-	uint16_t 	StartAddr;
-	uint16_t 	Length;
+
+struct ModbusReceiver_t {
+	uint8_t SlaveID;
+	uint8_t IsStartBitRcvd;
+	uint8_t IsFrameTimedOut;
+	uint16_t InterFrameTimeOut; // In us; Will use 150 us for 115200 baud rate.
+	uint8_t RxFrame[255];
+	uint16_t RxFrameLength;
+	uint8_t TxFrame[255];
+	uint16_t TxFrameLength;
+	uint8_t ReceivedByte;
+
 };
 
 #define MAX_BUF_SIZE	256
@@ -30,10 +38,19 @@ typedef struct {
 
 }MB_RxBuf_t;
 
-void TaskUartTransmit();
-uint16_t CRC16(uint8_t *data, uint8_t length);
-void TaskModbusCommunication();
 
-uint8_t SetHoldingRegister(uint16_t RegAdd, uint16_t RegValue);
+// Modbus Related Function
+uint8_t InitHoldingRegisters();
+int8_t SetHoldingRegister(uint16_t RegAdd, uint16_t RegValue);
+uint8_t Handle_FC_WSHR();
+
+void MB_InitReceiver();
+void MB_ReceiverISR(void);
+void MB_ProcessFrame(void);
+
+void MB_SendMessage(uint8_t * pTxData, uint8_t length);
+
+//Utility Functions
+uint16_t CRC16(uint8_t *data, uint8_t length);
 
 #endif
