@@ -151,7 +151,7 @@ int main(void)
 //	  HAL_Delay(1000);
 
 	  TaskControlRedLed();
-	  TaskModbusCommunication();
+	  //TaskModbusCommunication();
 	  //TaskUartTransmit();
   }
   /* USER CODE END 3 */

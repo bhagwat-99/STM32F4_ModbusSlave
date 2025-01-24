@@ -180,7 +180,7 @@ uint8_t MB_VerifyFrame(){
 
 TimerMs_t TimerModbusTask = 0;
 void TaskModbusCommunication(void){
-	if((TimerMs_t)(GetTickCounter() - TimerModbusTask) < 5) return; //Task frequency 5ms
+//	if((TimerMs_t)(GetTickCounter() - TimerModbusTask) < 5) return; //Task frequency 5ms
 
 	// data received in circular buffer?
 	while(sRxBuf.BufInIndex != sRxBuf.BufOutIndex){ // There is data to process
@@ -219,6 +219,8 @@ void TaskModbusCommunication(void){
 		if(MB_VerifyFrame() != 0){
 			// who have a problem
 			memset(MB_RxFrame, 0, (size_t)MODBUS_MAX_FRAME_LENGTH);
+			MB_RxFrameLength = 0;
+
 			// handle it
 		}
 		else{
