@@ -11,6 +11,7 @@
 // function code
 #define FC_RHR	0x03
 #define FC_WSHR	0x06 // write single holding register
+#define FC_WMHR	0x10 // write multiple holding register
 
 // exceptio code
 #define EC_IllegalDataVal 0x03

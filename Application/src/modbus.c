@@ -82,7 +82,7 @@ uint8_t InitHoldingRegisters(){
 
 }
 
-// Function code Write Holding Register
+// Function code Write single Holding Register
 uint8_t Handle_FC_WSHR(){
 
 	MB_Receiver.TxFrame[1] = MB_Receiver.RxFrame[1]; // function code
@@ -122,6 +122,68 @@ uint8_t Handle_FC_WSHR(){
 	return 0;
 
 }
+
+// Function code Write multiple Holding Register
+uint8_t Handle_FC_WMHR(){
+	uint8_t retVal = 0;
+
+	MB_Receiver.TxFrame[1] = MB_Receiver.RxFrame[1]; // function code
+
+    // Extract starting address
+    uint16_t start_address = ((uint16_t)MB_Receiver.RxFrame[2] << 8) | MB_Receiver.RxFrame[3];
+
+    // Extract quantity of registers to read
+    uint16_t NoOfRegs = ((uint16_t)MB_Receiver.RxFrame[4] << 8) | MB_Receiver.RxFrame[5];
+
+    uint8_t NoOfBytes = MB_Receiver.RxFrame[6];
+
+    // Validate starting address and quantity
+    if ((start_address + NoOfRegs > MAX_HOLDING_REGISTERS) || (NoOfRegs == 0) || (NoOfBytes != 2 * NoOfRegs) ) {
+
+    	MB_Receiver.TxFrame[1] = 	MB_Receiver.TxFrame[1] | 0x80;
+    	MB_Receiver.TxFrame[2] =  	EC_IllegalDataVal;
+
+    	// Calculate CRC for the response
+		uint16_t crc = CRC16(MB_Receiver.TxFrame, 3); // Calculate CRC for address, function code + 0x80, and exception code
+		MB_Receiver.TxFrame[3] = crc & 0xFF;                 // CRC Low byte
+		MB_Receiver.TxFrame[4] = (crc >> 8) & 0xFF;          // CRC High byte
+
+		MB_Receiver.TxFrameLength = 5;
+
+    }
+    else{
+
+		// Copy register values to the response
+		for (uint16_t i = 0; i < NoOfRegs; i++) {
+
+			HoldingRegisters[start_address + i] = (uint16_t)MB_Receiver.RxFrame[7 + i*2] << 8 | MB_Receiver.RxFrame[8 + i*2];
+
+		}
+
+
+    	MB_Receiver.TxFrame[2] = MB_Receiver.RxFrame[2];
+		MB_Receiver.TxFrame[3] = MB_Receiver.RxFrame[3];
+		MB_Receiver.TxFrame[4] = MB_Receiver.RxFrame[4];
+		MB_Receiver.TxFrame[5] = MB_Receiver.RxFrame[5];
+
+		// Calculate CRC for the response
+		uint16_t crc = CRC16(MB_Receiver.TxFrame, 6); // Calculate CRC for address, function code, and data
+		MB_Receiver.TxFrame[6] = crc & 0xFF;                 // CRC Low byte
+		MB_Receiver.TxFrame[7] = (crc >> 8) & 0xFF;          // CRC High byte
+
+		// Set total response length
+		MB_Receiver.TxFrameLength = 8;
+    }
+
+    MB_SendMessage(MB_Receiver.TxFrame, MB_Receiver.TxFrameLength);
+
+
+    return retVal; // Successfully processed
+
+}
+
+
+
 
 void MB_InitReceiver(){
 
@@ -206,6 +268,10 @@ void MB_ProcessFrame(void){ // This will be triggered from Timer interrupt
 
 		case FC_WSHR:
 			Handle_FC_WSHR();
+			break;
+
+		case FC_WMHR:
+			Handle_FC_WMHR();
 			break;
 
 		default:
