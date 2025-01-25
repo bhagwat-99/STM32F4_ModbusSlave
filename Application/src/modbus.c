@@ -85,11 +85,39 @@ uint8_t InitHoldingRegisters(){
 // Function code Write Holding Register
 uint8_t Handle_FC_WSHR(){
 
+	MB_Receiver.TxFrame[1] = MB_Receiver.RxFrame[1]; // function code
+
 	uint16_t RegAdd = (uint16_t)MB_Receiver.RxFrame[2] << 8 | MB_Receiver.RxFrame[3];
 
-	uint16_t RegValue = (uint16_t)MB_Receiver.RxFrame[4] << 8 | MB_Receiver.RxFrame[5];
 
-	HoldingRegisters[RegAdd] = RegValue;
+    // Validate Reg address
+    if (RegAdd > MAX_HOLDING_REGISTERS) {
+
+    	MB_Receiver.TxFrame[1] = 	MB_Receiver.TxFrame[1] | 0x80;
+    	MB_Receiver.TxFrame[2] =  	EC_IllegalDataVal;
+
+    	// Calculate CRC for the response
+		uint16_t crc = CRC16(MB_Receiver.TxFrame, 3); // Calculate CRC for address, function code + 0x80, and exception code
+		MB_Receiver.TxFrame[3] = crc & 0xFF;                 // CRC Low byte
+		MB_Receiver.TxFrame[4] = (crc >> 8) & 0xFF;          // CRC High byte
+
+		MB_Receiver.TxFrameLength = 5;
+
+    }
+    else{
+
+    	uint16_t RegValue = (uint16_t)MB_Receiver.RxFrame[4] << 8 | MB_Receiver.RxFrame[5];
+
+    	HoldingRegisters[RegAdd] = RegValue;
+
+    	// response is echo of query in write single holding register
+    	for(int i=0; i < 8; i++){
+    		MB_Receiver.TxFrame[i] = MB_Receiver.RxFrame[i]; // function code
+    	}
+    	MB_Receiver.TxFrameLength = 8;
+    }
+
+    MB_SendMessage(MB_Receiver.TxFrame, MB_Receiver.TxFrameLength);
 
 	return 0;
 
@@ -138,6 +166,7 @@ void MB_ReceiverISR(void){ // Will be called in UART Receive interrupt. Inline t
 	}
 
 }
+
 
 void MB_ProcessFrame(void){ // This will be triggered from Timer interrupt
 
